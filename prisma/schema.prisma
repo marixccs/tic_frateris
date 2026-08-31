@@ -1,0 +1,25 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StatusMembro {
+  ATIVO
+  INATIVO
+  INATIVO_TEMPORARIAMENTE
+}
+
+model Membro {
+  id             Int          @id @default(autoincrement())
+  nome           String
+  dataNascimento DateTime     @db.Date
+  cpf            String
+  observacao     String?
+  statusMembro   StatusMembro
+  dataIngresso   DateTime     @db.Date
+}
