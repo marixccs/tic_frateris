@@ -5,6 +5,7 @@ import cors from "cors";
 
 import { errorHandler } from "./middlewares/errorHandler";
 import { router as membroRoutes } from "./routes/membroRoutes";
+import { router as grupoRoutes } from "./routes/grupoRoutes";
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/membros", membroRoutes);
+app.use("/grupos", grupoRoutes);
 
 app.use(errorHandler);
 

@@ -1,38 +1,38 @@
 import { Request, Response } from "express";
-import * as membroService from "../services/membroService";
+import * as grupoService from "../services/grupoService";
 
 export async function list(req: Request, res: Response) {
-  const membros = await membroService.listar();
+  const grupos = await grupoService.listar();
 
-  res.json(membros);
+  res.json(grupos);
 }
 
 export async function getById(req: Request, res: Response) {
   const id = Number(req.params.id);
 
-  const membro = await membroService.buscarPorId(id);
+  const grupo = await grupoService.buscarPorId(id);
 
-  res.json(membro);
+  res.json(grupo);
 }
 
 export async function create(req: Request, res: Response) {
-  const membro = await membroService.criar(req.body);
+  const grupo = await grupoService.criar(req.body);
 
-  res.status(201).json(membro);
+  res.status(201).json(grupo);
 }
 
 export async function update(req: Request, res: Response) {
   const id = Number(req.params.id);
 
-  const membro = await membroService.atualizar(id, req.body);
+  const grupo = await grupoService.atualizar(id, req.body);
 
-  res.json(membro);
+  res.json(grupo);
 }
 
 export async function remove(req: Request, res: Response) {
   const id = Number(req.params.id);
 
-  await membroService.remover(id);
+  await grupoService.remover(id);
 
   res.status(204).send();
 }

@@ -5,12 +5,15 @@ import {
 } from "../types/membro";
 
 export function findAll() {
-  return prisma.membro.findMany();
+  return prisma.membro.findMany({
+    include: { grupo: true },
+  });
 }
 
 export function findById(id: number) {
   return prisma.membro.findUnique({
     where: { id },
+    include: { grupo: true },
   });
 }
 

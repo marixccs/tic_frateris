@@ -7,6 +7,7 @@ export interface CreateMembroDTO {
   observacao?: string;
   statusMembro: StatusMembro;
   dataIngresso: string;
+  grupoId?: number;
 }
 
 export interface UpdateMembroDTO {
@@ -16,6 +17,7 @@ export interface UpdateMembroDTO {
   observacao?: string;
   statusMembro?: StatusMembro;
   dataIngresso?: string;
+  grupoId?: number | null;
 }
 
 export interface CreateMembroData {
@@ -25,6 +27,7 @@ export interface CreateMembroData {
   observacao?: string;
   statusMembro: StatusMembro;
   dataIngresso: Date;
+  grupoId?: number;
 }
 
 export interface UpdateMembroData {
@@ -34,4 +37,5 @@ export interface UpdateMembroData {
   observacao?: string;
   statusMembro?: StatusMembro;
   dataIngresso?: Date;
+  grupoId?: number | null;
 }
