@@ -22,4 +22,19 @@ model Membro {
   observacao     String?
   statusMembro   StatusMembro
   dataIngresso   DateTime     @db.Date
+  grupoId Int?
+  grupo   Grupo? @relation(fields: [grupoId], references: [id])
+}
+
+enum StatusGrupo {
+  ATIVO
+  INATIVO
+}
+
+model Grupo {
+  id          Int         @id @default(autoincrement())
+  nome        String      @unique
+  descricao   String?
+  statusGrupo StatusGrupo @default(ATIVO)
+  membros     Membro[]
 }
