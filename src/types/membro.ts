@@ -1,4 +1,4 @@
-import { StatusMembro } from "../generated/prisma/enums";
+import { StatusMembro } from "../lib/enums";
 
 export interface CreateMembroDTO {
   nome: string;
@@ -8,6 +8,7 @@ export interface CreateMembroDTO {
   statusMembro: StatusMembro;
   dataIngresso: string;
   grupoId?: number;
+  cadastradoPorId: number;
 }
 
 export interface UpdateMembroDTO {
@@ -28,6 +29,7 @@ export interface CreateMembroData {
   statusMembro: StatusMembro;
   dataIngresso: Date;
   grupoId?: number;
+  cadastradoPorId: number;
 }
 
 export interface UpdateMembroData {

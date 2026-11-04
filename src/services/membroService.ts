@@ -1,7 +1,7 @@
 import * as membroRepository from "../repositories/membroRepository";
 import * as grupoService from "./grupoService";
 import { AppError } from "../middlewares/AppError";
-import { StatusGrupo, StatusMembro } from "../generated/prisma/enums";
+import { StatusMembro } from "../lib/enums";
 import {
   CreateMembroDTO,
   UpdateMembroDTO,
@@ -34,11 +34,7 @@ async function validarGrupo(grupoId?: number | null) {
     throw new AppError("O grupoId precisa ser um número");
   }
 
-  const grupo = await grupoService.buscarPorId(grupoId);
-
-  if (grupo.statusGrupo !== StatusGrupo.ATIVO) {
-    throw new AppError("O membro só pode ser vinculado a um grupo ativo");
-  }
+  await grupoService.buscarPorId(grupoId);
 }
 
 export function listar() {
@@ -65,10 +61,11 @@ export async function criar(data: CreateMembroDTO) {
     !data.cpf ||
     !data.dataNascimento ||
     !data.dataIngresso ||
-    !data.statusMembro
+    !data.statusMembro ||
+    !Number.isInteger(data.cadastradoPorId)
   ) {
     throw new AppError(
-      "Preencha nome, cpf, dataNascimento, dataIngresso e statusMembro"
+      "Preencha nome, cpf, dataNascimento, dataIngresso, statusMembro e cadastradoPorId"
     );
   }
 
@@ -84,6 +81,7 @@ export async function criar(data: CreateMembroDTO) {
     statusMembro: data.statusMembro,
     dataIngresso: converterData(data.dataIngresso, "dataIngresso"),
     grupoId: data.grupoId,
+    cadastradoPorId: data.cadastradoPorId,
   };
 
   return membroRepository.create(dados);

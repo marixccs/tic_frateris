@@ -10,7 +10,11 @@ export function findAll() {
 export function findById(id: number) {
   return prisma.grupo.findUnique({
     where: { id },
-    include: { membros: true },
+    include: {
+      participacoes: {
+        include: { membro: { include: { pessoa: true } } },
+      },
+    },
   });
 }
 
@@ -22,7 +26,12 @@ export function findByNome(nome: string) {
 
 export function create(data: CreateGrupoDTO) {
   return prisma.grupo.create({
-    data,
+    data: {
+      nome: data.nome,
+      descricao: data.descricao ?? "",
+      criadoPorId: data.criadoPorId,
+      administradorId: data.administradorId,
+    },
   });
 }
 
