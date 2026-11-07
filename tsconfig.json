@@ -2,10 +2,10 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "commonjs",
-    "rootDir": "prisma/src",
+    "rootDir": "src",
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["prisma/src/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }

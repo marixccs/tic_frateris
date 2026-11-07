@@ -22,31 +22,24 @@ const options = {
             message: { type: "string", example: "Mensagem do erro" },
           },
         },
-        StatusMembro: {
-          type: "string",
-          enum: ["ATIVO", "INATIVO", "INATIVO_TEMPORARIAMENTE"],
-        },
-        // AJUSTE: confira os valores reais do enum StatusGrupo no seu schema.prisma
-        StatusGrupo: {
-          type: "string",
-          enum: ["ATIVO", "INATIVO"],
-        },
         Grupo: {
           type: "object",
           properties: {
             id: { type: "integer", example: 1 },
             nome: { type: "string", example: "Grupo de Jovens" },
-            descricao: { type: "string", nullable: true, example: "Encontros aos sábados" },
-            statusGrupo: { $ref: "#/components/schemas/StatusGrupo" },
+            descricao: { type: "string", example: "Encontros aos sábados" },
+            criadoPorId: { type: "integer", example: 1 },
+            administradorId: { type: "integer", example: 1 },
           },
         },
         CreateGrupo: {
           type: "object",
-          required: ["nome"],
+          required: ["nome", "criadoPorId", "administradorId"],
           properties: {
             nome: { type: "string", example: "Grupo de Jovens" },
             descricao: { type: "string", example: "Encontros aos sábados" },
-            statusGrupo: { $ref: "#/components/schemas/StatusGrupo" },
+            criadoPorId: { type: "integer", example: 1 },
+            administradorId: { type: "integer", example: 1 },
           },
         },
         UpdateGrupo: {
@@ -54,7 +47,6 @@ const options = {
           properties: {
             nome: { type: "string", example: "Grupo de Jovens" },
             descricao: { type: "string", example: "Nova descrição" },
-            statusGrupo: { $ref: "#/components/schemas/StatusGrupo" },
           },
         },
         Membro: {
@@ -65,7 +57,7 @@ const options = {
             dataNascimento: { type: "string", format: "date", example: "1995-04-20" },
             cpf: { type: "string", example: "12345678900" },
             observacao: { type: "string", nullable: true, example: "Prefere contato por e-mail" },
-            statusMembro: { $ref: "#/components/schemas/StatusMembro" },
+            statusMembro: { type: "string", enum: ["ATIVO", "INATIVO", "AFASTADO"] },
             dataIngresso: { type: "string", format: "date", example: "2024-02-10" },
             grupo: {
               allOf: [{ $ref: "#/components/schemas/Grupo" }],
@@ -75,14 +67,15 @@ const options = {
         },
         CreateMembro: {
           type: "object",
-          required: ["nome", "dataNascimento", "cpf", "statusMembro", "dataIngresso"],
+          required: ["nome", "dataNascimento", "cpf", "statusMembro", "dataIngresso", "cadastradoPorId"],
           properties: {
             nome: { type: "string", example: "Maria Silva" },
             dataNascimento: { type: "string", format: "date", example: "1995-04-20" },
             cpf: { type: "string", example: "12345678900" },
             observacao: { type: "string", example: "Prefere contato por e-mail" },
-            statusMembro: { $ref: "#/components/schemas/StatusMembro" },
+            statusMembro: { type: "string", enum: ["ATIVO", "INATIVO", "AFASTADO"] },
             dataIngresso: { type: "string", format: "date", example: "2024-02-10" },
+            cadastradoPorId: { type: "integer", example: 1 },
           },
         },
         UpdateMembro: {
@@ -92,7 +85,7 @@ const options = {
             dataNascimento: { type: "string", format: "date", example: "1995-04-20" },
             cpf: { type: "string", example: "12345678900" },
             observacao: { type: "string", example: "Atualizado" },
-            statusMembro: { $ref: "#/components/schemas/StatusMembro" },
+            statusMembro: { type: "string", enum: ["ATIVO", "INATIVO", "AFASTADO"] },
             dataIngresso: { type: "string", format: "date", example: "2024-02-10" },
           },
         },

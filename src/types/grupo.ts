@@ -1,13 +1,11 @@
-import { StatusGrupo } from "../generated/prisma/enums";
-
 export interface CreateGrupoDTO {
   nome: string;
   descricao?: string;
-  statusGrupo?: StatusGrupo;
+  criadoPorId: number;
+  administradorId: number;
 }
 
 export interface UpdateGrupoDTO {
   nome?: string;
   descricao?: string;
-  statusGrupo?: StatusGrupo;
 }

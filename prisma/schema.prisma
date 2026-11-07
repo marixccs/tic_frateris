@@ -1,3 +1,10 @@
+// Schema Prisma adaptado dos Models Java/JPA e conferido com o banco real.
+// Conferido com introspeccao real do PostgreSQL fornecida em 04/11/2026.
+// Colunas, tipos, unicidades e FKs alinhados ao banco existente.
+// Nao execute db push ou migrate dev sem um plano de migracao e backup.
+// EnumType.STRING no Java => colunas VARCHAR no PostgreSQL, representadas como String.
+// Os tipos/constantes correspondentes estao no arquivo enums.ts.
+
 generator client {
   provider     = "prisma-client"
   output       = "../src/generated/prisma"
@@ -8,33 +15,312 @@ datasource db {
   provider = "postgresql"
 }
 
-enum StatusMembro {
-  ATIVO
-  INATIVO
-  INATIVO_TEMPORARIAMENTE
+// ------------------------------------------------------------
+// PESSOAS: heranca JOINED do Java representada por PK compartilhada
+// ------------------------------------------------------------
+model Pessoa {
+  id             BigInt   @id @default(autoincrement()) @map("id_pessoa")
+  nome           String   @db.VarChar(100)
+  dataNascimento DateTime @map("dt_nascimento") @db.Date
+  cpf            String   @unique(map: "uknlwiu48rutiltbnjle59krljo") @db.VarChar(14)
+
+  membro  Membro?
+  usuario Usuario?
+
+  @@map("pessoa")
 }
 
+model Usuario {
+  id    BigInt  @id @map("id_usuario")
+  login String  @unique(map: "ukpm3f4m4fqv89oeeeac4tbe2f4") @db.VarChar(100)
+  senha String  @db.VarChar(255)
+  ativo Boolean
+
+  pessoa                Pessoa                   @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fklq8uaf4m0jees2qdvqpvkjco5")
+  usuarioFuncoes        UsuarioFuncao[]
+  movimentacoes         MovimentacaoFinanceira[]
+  aprovacoesRegistradas Aprovacao[]
+  presencasRegistradas  Presenca[]
+  membrosCadastrados    Membro[]                 @relation("MembroCadastradoPor")
+  gruposCriados         Grupo[]                  @relation("GrupoCriador")
+  gruposAdministrados   Grupo[]                  @relation("GrupoAdministrador")
+  reunioesCriadas       Reuniao[]
+  documentosGerados     Documento[]
+  justificativasAnalisadas Justificativa[]
+
+  @@map("usuario")
+}
+
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
 model Membro {
-  id             Int          @id @default(autoincrement())
-  nome           String
-  dataNascimento DateTime     @db.Date
-  cpf            String
-  observacao     String?
-  statusMembro   StatusMembro
-  dataIngresso   DateTime     @db.Date
-  grupoId Int?
-  grupo   Grupo? @relation(fields: [grupoId], references: [id])
+  id             BigInt   @id @map("id_membro")
+  observacao     String?  @db.VarChar(500)
+  // Valores Java: ATIVO | INATIVO | AFASTADO
+  statusMembro   String   @map("status_membro") @db.VarChar(30)
+  dataIngresso   DateTime @map("dt_ingresso") @db.Date
+  cadastradoPorId BigInt  @map("id_usuario_cadastro")
+
+  pessoa              Pessoa              @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fksdjjkxmhbn6civb2ro85513p4")
+  cadastradoPor        Usuario             @relation("MembroCadastradoPor", fields: [cadastradoPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkrejtgt5r551kse46a8p495yct")
+  participacoes        ParticipacaoGrupo[]
+  presencas            Presenca[]
+  solicitacoes         Solicitacao[]
+  historicosFormacao   HistoricoFormacao[]
+
+  @@map("membro")
 }
 
-enum StatusGrupo {
-  ATIVO
-  INATIVO
-}
-
+// ------------------------------------------------------------
+// GRUPOS E FORMACAO
+// ------------------------------------------------------------
 model Grupo {
-  id          Int         @id @default(autoincrement())
-  nome        String      @unique
-  descricao   String?
-  statusGrupo StatusGrupo @default(ATIVO)
-  membros     Membro[]
+  id               BigInt @id @default(autoincrement()) @map("id_grupo")
+  nome             String @unique(map: "ukqjpdhf7abppsgfmpkvbmy18vu") @map("nm_grupo") @db.VarChar(100)
+  descricao        String @db.VarChar(500)
+  criadoPorId      BigInt @map("id_usuario_criador")
+  administradorId  BigInt @map("id_usuario_administrador")
+
+  criadoPor      Usuario              @relation("GrupoCriador", fields: [criadoPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkcwe5mnawjtteanakbaa2gevp")
+  administrador  Usuario              @relation("GrupoAdministrador", fields: [administradorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk2x639l1jg8e9alnk0kuj6qpp0")
+  participacoes  ParticipacaoGrupo[]
+  reunioes       Reuniao[]
+  etapas         EtapaFormacao[]
+  documentos     Documento[]
+
+  @@map("grupo")
+}
+
+model ParticipacaoGrupo {
+  id          BigInt   @id @default(autoincrement()) @map("id_participacao")
+  dataEntrada DateTime @map("dt_entrada") @db.Date
+  dataSaida   DateTime? @map("dt_saida") @db.Date
+  observacao  String?  @db.VarChar(500)
+  membroId    BigInt   @map("id_membro")
+  grupoId     BigInt   @map("id_grupo")
+
+  membro Membro @relation(fields: [membroId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk3tsnh6mait1oajve83wg5kd3m")
+  grupo  Grupo  @relation(fields: [grupoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkjqlhoflbh96ieeh5ho6krj01r")
+
+  @@unique([membroId, grupoId, dataEntrada], map: "ukqb9g0wdy0emlxisgildmwt83d")
+  @@map("participacao_grupo")
+}
+
+model EtapaFormacao {
+  id        BigInt @id @default(autoincrement()) @map("id_etapa")
+  nome      String @map("nome_etapa") @db.VarChar(100)
+  descricao String @db.VarChar(500)
+  ordem     Int    @map("ordem_etapa")
+  grupoId   BigInt @map("id_grupo")
+
+  grupo        Grupo               @relation(fields: [grupoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fktj67los0s7fb2ng16vpatmoas")
+  historicos   HistoricoFormacao[]
+  solicitacoes Solicitacao[]
+  reunioes     Reuniao[]
+
+  @@unique([grupoId, ordem], map: "uk35t6abijmsmfdbuwncqa0sd7j")
+  @@map("etapa_formacao")
+}
+
+model HistoricoFormacao {
+  id         BigInt   @id @default(autoincrement()) @map("id_historico")
+  dataInicio DateTime @map("dt_inicio") @db.Date
+  dataFim    DateTime? @map("dt_fim") @db.Date
+  observacao String?  @db.VarChar(500)
+  membroId   BigInt   @map("id_membro")
+  etapaId    BigInt   @map("id_etapa")
+
+  membro Membro        @relation(fields: [membroId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk7t0n98oot2rtomv5759kaqfnq")
+  etapa  EtapaFormacao @relation(fields: [etapaId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkdeg9awlfddjnfga7mbawu7ay5")
+
+  @@map("historico_formacao")
+}
+
+// ------------------------------------------------------------
+// REUNIOES E PRESENCAS
+// ------------------------------------------------------------
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model Reuniao {
+  id               BigInt   @id @default(autoincrement()) @map("id_reuniao")
+  descricao        String   @db.VarChar(500)
+  // AGENDADA | REALIZADA | CANCELADA
+  status           String   @map("status_reuniao") @db.VarChar(30)
+  dataReuniao      DateTime @map("dt_reuniao") @db.Timestamp(6)
+  grupoId          BigInt   @map("id_grupo")
+  criadaPorId      BigInt   @map("id_usuario_criador")
+  etapaConcedidaId BigInt?  @map("id_etapa_concedida")
+
+  grupo          Grupo          @relation(fields: [grupoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkh5yin7l54ap2mk3c1h2anwogx")
+  criadaPor      Usuario        @relation(fields: [criadaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk54a2np3kuo4wqjn7p7wugdcer")
+  etapaConcedida EtapaFormacao? @relation(fields: [etapaConcedidaId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkq3wf0mmutspdplgiu5itg03hl")
+  presencas      Presenca[]
+  documentos     Documento[]
+
+  @@map("reuniao")
+}
+
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model Presenca {
+  id              BigInt   @id @default(autoincrement()) @map("id_presenca")
+  dataRegistro    DateTime @map("dt_registro") @db.Timestamp(6)
+  observacao      String?  @db.VarChar(500)
+  // PRESENTE | AUSENTE | JUSTIFICADA
+  status          String   @map("status_presenca") @db.VarChar(30)
+  reuniaoId       BigInt   @map("id_reuniao")
+  membroId        BigInt   @map("id_membro")
+  registradaPorId BigInt   @map("id_usuario_registro")
+
+  reuniao       Reuniao        @relation(fields: [reuniaoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkobtj57vb9ki4ejdntr20lgbsk")
+  membro        Membro         @relation(fields: [membroId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fksmp8dtbdrv0ui7h79gfeyrn46")
+  registradaPor Usuario        @relation(fields: [registradaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk5echcdgkuyni2qjgfk5fehxct")
+  justificativa Justificativa?
+
+  @@unique([reuniaoId, membroId], map: "ukagmh8oesgiv2k3ji0ix1g52y1")
+  @@map("presenca")
+}
+
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model Justificativa {
+  id                BigInt   @id @default(autoincrement()) @map("id_justificativa")
+  motivo            String   @db.VarChar(500)
+  dataJustificativa DateTime @map("dt_justificativa") @db.Date
+  // PENDENTE | ACEITA | RECUSADA
+  status            String   @map("status_justificativa") @db.VarChar(30)
+  presencaId        BigInt   @unique(map: "uklktfhlevrcqx9i5xgy3eu50c") @map("id_presenca")
+  analisadaPorId    BigInt?  @map("id_usuario_analise")
+
+  presenca     Presenca @relation(fields: [presencaId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkmy9d9p6d422mr1utm6kd34ct0")
+  analisadaPor Usuario? @relation(fields: [analisadaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkqae1jldsg81ja36y4g7yyraqj")
+
+  @@map("justificativa")
+}
+
+// ------------------------------------------------------------
+// SOLICITACOES E APROVACOES
+// ------------------------------------------------------------
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model Solicitacao {
+  id                BigInt  @id @default(autoincrement()) @map("id_solicitacao")
+  // MUDANCA_ETAPA | AFASTAMENTO | DESLIGAMENTO | OUTRA
+  tipo              String  @map("tipo_solicitacao") @db.VarChar(50)
+  parecerFormador   String? @map("parecer_formador") @db.VarChar(1000)
+  motivo            String  @db.VarChar(500)
+  membroId          BigInt  @map("id_membro")
+  etapaSolicitadaId BigInt? @map("id_etapa_solicitada")
+
+  membro          Membro         @relation(fields: [membroId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fksquu2401ktg0hem2b875rpbnv")
+  etapaSolicitada EtapaFormacao? @relation(fields: [etapaSolicitadaId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk2mg16tshpk254u53cbck44rcw")
+  aprovacao       Aprovacao?
+  documentos      Documento[]
+
+  @@map("solicitacao")
+}
+
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model Aprovacao {
+  id              BigInt   @id @default(autoincrement()) @map("id_aprovacao")
+  // PENDENTE | APROVADA | REPROVADA
+  decisaoConselho String   @map("decisao_conselho") @db.VarChar(30)
+  dataRegistro    DateTime @map("dt_registro") @db.Timestamp(6)
+  parecer         String?  @db.VarChar(1000)
+  solicitacaoId   BigInt   @unique(map: "uky1uwueytnxbpc6facb2jc597") @map("id_solicitacao")
+  registradaPorId BigInt   @map("id_usuario_registro")
+
+  solicitacao   Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk6tuu1yqo4wxvo9p4oxftnx20p")
+  registradaPor Usuario     @relation(fields: [registradaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk83k6gp03ujyke2l8bi8pie3rj")
+
+  @@map("aprovacao")
+}
+
+// ------------------------------------------------------------
+// DOCUMENTOS
+// ------------------------------------------------------------
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model Documento {
+  id           BigInt  @id @default(autoincrement()) @map("id_documento")
+  descricao    String  @db.VarChar(500)
+  // ATA | RELATORIO | COMPROVANTE | FICHA_MEMBRO
+  tipo         String  @map("tipo_documento") @db.VarChar(30)
+  nomeArquivo  String  @map("nm_arquivo") @db.VarChar(255)
+  geradoPorId  BigInt  @map("id_usuario_gerador")
+  reuniaoId    BigInt? @map("id_reuniao")
+  grupoId      BigInt? @map("id_grupo")
+  solicitacaoId BigInt? @map("id_solicitacao")
+
+  geradoPor   Usuario     @relation(fields: [geradoPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkl85i6h4r2x7rljssaymqrhpv0")
+  reuniao     Reuniao?    @relation(fields: [reuniaoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fko0lhp9obme08bn6pcbb6gbcce")
+  grupo       Grupo?      @relation(fields: [grupoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkgqe6fwv2pfyrkw538wfa6un93")
+  solicitacao Solicitacao? @relation(fields: [solicitacaoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk7ngsfn1obe2l2mstp51sx6ifi")
+
+  @@map("documento")
+}
+
+// ------------------------------------------------------------
+// FUNCOES DOS USUARIOS
+// ------------------------------------------------------------
+model Funcao {
+  id        BigInt  @id @default(autoincrement()) @map("id_funcao")
+  nome      String  @unique(map: "ukm2l6p4dv62eo4sgo8hcov7sjb") @map("nm_funcao") @db.VarChar(100)
+  descricao String? @map("descricao_funcao") @db.VarChar(500)
+
+  usuarios UsuarioFuncao[]
+
+  @@map("funcao")
+}
+
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model UsuarioFuncao {
+  id         BigInt   @id @default(autoincrement()) @map("id_usuario_funcao")
+  dataInicio DateTime @map("dt_inicio") @db.Date
+  dataFim    DateTime? @map("dt_fim") @db.Date
+  // ATIVA | INATIVA
+  status     String   @map("status_funcao_usuario") @db.VarChar(30)
+  usuarioId  BigInt   @map("id_usuario")
+  funcaoId   BigInt   @map("id_funcao")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkkxwjdaui8j4ggco8sxlt40gwq")
+  funcao  Funcao  @relation(fields: [funcaoId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkbbcsbteij370ofd633buh826v")
+
+  @@unique([usuarioId, funcaoId, dataInicio], map: "uk4nv9f6lfc93rm020ukltoxkfo")
+  @@map("usuario_funcao")
+}
+
+// ------------------------------------------------------------
+// FINANCAS: heranca JOINED com PK compartilhada
+// ------------------------------------------------------------
+model MovimentacaoFinanceira {
+  id                BigInt   @id @default(autoincrement()) @map("id_movimentacao")
+  valor             Decimal  @db.Decimal(12, 2)
+  dataMovimentacao  DateTime @map("dt_movimentacao") @db.Date
+  descricao         String   @db.VarChar(500)
+  registradaPorId   BigInt   @map("id_usuario_registro")
+
+  registradaPor     Usuario           @relation(fields: [registradaPorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkefjjmwdvcv7jdwx5lvff1lo13")
+  entradaFinanceira EntradaFinanceira?
+  saidaFinanceira   SaidaFinanceira?
+
+  @@map("movimentacao_financeira")
+}
+
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model EntradaFinanceira {
+  id          BigInt @id @map("id_entrada")
+  // CONTRIBUICAO | DOACAO | OUTRA
+  tipoEntrada String @map("tipo_entrada") @db.VarChar(30)
+  origem      String @db.VarChar(200)
+
+  movimentacao MovimentacaoFinanceira @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkk9kt23kyir9h9hxuwu45c54pw")
+
+  @@map("entrada_financeira")
+}
+
+/// O banco possui constraints CHECK nao representadas integralmente no Prisma.
+model SaidaFinanceira {
+  id        BigInt @id @map("id_saida")
+  destino   String @db.VarChar(200)
+  // COMPRA | PAGAMENTO | OUTRA
+  tipoSaida String @map("tipo_saida") @db.VarChar(30)
+
+  movimentacao MovimentacaoFinanceira @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk91lsnrhx1ajns5ctfu6xrqlgw")
+
+  @@map("saida_financeira")
 }
