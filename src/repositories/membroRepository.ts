@@ -1,8 +1,5 @@
 import { prisma } from "../config/prisma";
-import {
-  CreateMembroData,
-  UpdateMembroData,
-} from "../types/membro";
+import type { CreateMembroData, UpdateMembroData } from "../types/membro";
 
 export function findAll() {
   return prisma.membro.findMany({
@@ -13,7 +10,7 @@ export function findAll() {
   });
 }
 
-export function findById(id: number) {
+export function findById(id: bigint) {
   return prisma.membro.findUnique({
     where: { id },
     include: {
@@ -28,8 +25,10 @@ export function create(data: CreateMembroData) {
     data: {
       statusMembro: data.statusMembro,
       dataIngresso: data.dataIngresso,
-      observacao: data.observacao,
-      cadastradoPor: { connect: { id: data.cadastradoPorId } },
+      ...(data.observacao !== undefined ? { observacao: data.observacao } : {}),
+      cadastradoPor: {
+        connect: { id: data.cadastradoPorId },
+      },
       pessoa: {
         create: {
           nome: data.nome,
@@ -37,61 +36,49 @@ export function create(data: CreateMembroData) {
           cpf: data.cpf,
         },
       },
-      ...(data.grupoId === undefined
-        ? {}
-        : {
-            participacoes: {
-              create: {
-                dataEntrada: data.dataIngresso,
-                grupo: { connect: { id: data.grupoId } },
-              },
-            },
-          }),
     },
+    include: { pessoa: true, participacoes: { include: { grupo: true } } },
   });
 }
 
-export function update(id: number, data: UpdateMembroData) {
+export function update(id: bigint, data: UpdateMembroData) {
+  const atualizarPessoa =
+    data.nome !== undefined ||
+    data.dataNascimento !== undefined ||
+    data.cpf !== undefined;
+
   return prisma.membro.update({
     where: { id },
     data: {
-      statusMembro: data.statusMembro,
-      dataIngresso: data.dataIngresso,
-      observacao: data.observacao,
-      pessoa:
-        data.nome === undefined &&
-        data.dataNascimento === undefined &&
-        data.cpf === undefined
-          ? undefined
-          : {
+      ...(data.statusMembro !== undefined
+        ? { statusMembro: data.statusMembro }
+        : {}),
+      ...(data.dataIngresso !== undefined
+        ? { dataIngresso: data.dataIngresso }
+        : {}),
+      ...(data.observacao !== undefined ? { observacao: data.observacao } : {}),
+      ...(data.cadastradoPorId !== undefined
+        ? { cadastradoPor: { connect: { id: data.cadastradoPorId } } }
+        : {}),
+      ...(atualizarPessoa
+        ? {
+            pessoa: {
               update: {
-                nome: data.nome,
-                dataNascimento: data.dataNascimento,
-                cpf: data.cpf,
+                ...(data.nome !== undefined ? { nome: data.nome } : {}),
+                ...(data.dataNascimento !== undefined
+                  ? { dataNascimento: data.dataNascimento }
+                  : {}),
+                ...(data.cpf !== undefined ? { cpf: data.cpf } : {}),
               },
             },
-      ...(data.grupoId === undefined
-        ? {}
-        : {
-            participacoes: {
-              create:
-                data.grupoId === null
-                  ? undefined
-                  : {
-                      dataEntrada: data.dataIngresso ?? new Date(),
-                      grupo: { connect: { id: data.grupoId } },
-                    },
-              updateMany:
-                data.grupoId === null
-                  ? { where: { dataSaida: null }, data: { dataSaida: new Date() } }
-                  : undefined,
-            },
-          }),
+          }
+        : {}),
     },
+    include: { pessoa: true, participacoes: { include: { grupo: true } } },
   });
 }
 
-export function remove(id: number) {
+export function remove(id: bigint) {
   return prisma.membro.delete({
     where: { id },
   });

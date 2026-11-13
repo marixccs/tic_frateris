@@ -1,38 +1,71 @@
-import { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import * as grupoService from "../services/grupoService";
+import type { CreateGrupoDTO, UpdateGrupoDTO } from "../types/grupo";
+import { obterCorpo, prepararJson } from "../utils/http";
 
-export async function list(req: Request, res: Response) {
-  const grupos = await grupoService.listar();
-
-  res.json(grupos);
+export async function list(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const grupos = await grupoService.listar();
+    res.json(prepararJson(grupos));
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function getById(req: Request, res: Response) {
-  const id = Number(req.params.id);
-
-  const grupo = await grupoService.buscarPorId(id);
-
-  res.json(grupo);
+export async function getById(
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const grupo = await grupoService.buscarPorId(req.params.id);
+    res.json(prepararJson(grupo));
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function create(req: Request, res: Response) {
-  const grupo = await grupoService.criar(req.body);
-
-  res.status(201).json(grupo);
+export async function create(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const dados = obterCorpo<CreateGrupoDTO>(req.body);
+    const grupo = await grupoService.criar(dados);
+    res.status(201).json(prepararJson(grupo));
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function update(req: Request, res: Response) {
-  const id = Number(req.params.id);
-
-  const grupo = await grupoService.atualizar(id, req.body);
-
-  res.json(grupo);
+export async function update(
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const dados = obterCorpo<UpdateGrupoDTO>(req.body);
+    const grupo = await grupoService.atualizar(req.params.id, dados);
+    res.json(prepararJson(grupo));
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function remove(req: Request, res: Response) {
-  const id = Number(req.params.id);
-
-  await grupoService.remover(id);
-
-  res.status(204).send();
+export async function remove(
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    await grupoService.remover(req.params.id);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
 }

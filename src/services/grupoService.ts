@@ -1,11 +1,66 @@
 import * as grupoRepository from "../repositories/grupoRepository";
 import { AppError } from "../middlewares/AppError";
-import { CreateGrupoDTO, UpdateGrupoDTO } from "../types/grupo";
+import type {
+  CreateGrupoDTO,
+  CreateGrupoData,
+  UpdateGrupoDTO,
+  UpdateGrupoData,
+} from "../types/grupo";
 
-async function validarNomeRepetido(nome: string, idAtual?: number) {
+type Identificador = string | number | bigint;
+
+function converterId(valor: Identificador, campo: string): bigint {
+  let id: bigint;
+
+  if (typeof valor === "bigint") {
+    id = valor;
+  } else if (typeof valor === "number") {
+    if (!Number.isSafeInteger(valor)) {
+      throw new AppError(`${campo} inválido`);
+    }
+    id = BigInt(valor);
+  } else if (typeof valor === "string" && /^[1-9]\d{0,18}$/.test(valor.trim())) {
+    id = BigInt(valor.trim());
+  } else {
+    throw new AppError(`${campo} inválido`);
+  }
+
+  if (id <= 0n || id > 9223372036854775807n) {
+    throw new AppError(`${campo} inválido`);
+  }
+
+  return id;
+}
+
+function validarTexto(valor: unknown, campo: string, maximo: number): string {
+  if (typeof valor !== "string" || !valor.trim()) {
+    throw new AppError(`O campo ${campo} é obrigatório`);
+  }
+
+  const texto = valor.trim();
+  if (texto.length > maximo) {
+    throw new AppError(`O campo ${campo} deve ter no máximo ${maximo} caracteres`);
+  }
+
+  return texto;
+}
+
+function validarDescricao(valor: unknown): string {
+  if (typeof valor !== "string") {
+    throw new AppError("A descrição do grupo é obrigatória");
+  }
+
+  if (valor.length > 500) {
+    throw new AppError("A descrição deve ter no máximo 500 caracteres");
+  }
+
+  return valor.trim();
+}
+
+async function validarNomeRepetido(nome: string, idAtual?: bigint) {
   const grupoExistente = await grupoRepository.findByNome(nome);
 
-  if (grupoExistente && Number(grupoExistente.id) !== idAtual) {
+  if (grupoExistente && grupoExistente.id !== idAtual) {
     throw new AppError("Já existe um grupo com esse nome", 409);
   }
 }
@@ -14,12 +69,8 @@ export function listar() {
   return grupoRepository.findAll();
 }
 
-export async function buscarPorId(id: number) {
-  if (!Number.isInteger(id)) {
-    throw new AppError("Id do grupo inválido");
-  }
-
-  const grupo = await grupoRepository.findById(id);
+export async function buscarPorId(id: Identificador) {
+  const grupo = await grupoRepository.findById(converterId(id, "Id do grupo"));
 
   if (!grupo) {
     throw new AppError("Grupo não encontrado", 404);
@@ -29,50 +80,48 @@ export async function buscarPorId(id: number) {
 }
 
 export async function criar(data: CreateGrupoDTO) {
-  if (typeof data.nome !== "string" || !data.nome.trim()) {
-    throw new AppError("O nome do grupo é obrigatório");
-  }
-  if (
-    !Number.isInteger(data.criadoPorId) ||
-    !Number.isInteger(data.administradorId)
-  ) {
-    throw new AppError("criadoPorId e administradorId são obrigatórios");
-  }
+  const nome = validarTexto(data.nome, "nome", 100);
+  const descricao = validarDescricao(data.descricao);
 
-  const nome = data.nome.trim();
-
-  await validarNomeRepetido(nome);
-
-  return grupoRepository.create({
+  const dados: CreateGrupoData = {
     nome,
-    descricao: data.descricao,
-    criadoPorId: data.criadoPorId,
-    administradorId: data.administradorId,
-  });
-}
-
-export async function atualizar(id: number, data: UpdateGrupoDTO) {
-  await buscarPorId(id);
-
-  const dados: UpdateGrupoDTO = {
-    descricao: data.descricao,
+    descricao,
+    criadoPorId: converterId(data.criadoPorId, "criadoPorId"),
+    administradorId: converterId(data.administradorId, "administradorId"),
   };
 
-  if (data.nome !== undefined) {
-    if (typeof data.nome !== "string" || !data.nome.trim()) {
-      throw new AppError("O nome do grupo não pode ficar vazio");
-    }
-
-    dados.nome = data.nome.trim();
-
-    await validarNomeRepetido(dados.nome, id);
-  }
-
-  return grupoRepository.update(id, dados);
+  await validarNomeRepetido(nome);
+  return grupoRepository.create(dados);
 }
 
-export async function remover(id: number) {
-  await buscarPorId(id);
+export async function atualizar(id: Identificador, data: UpdateGrupoDTO) {
+  const idGrupo = converterId(id, "Id do grupo");
+  await buscarPorId(idGrupo);
 
-  return grupoRepository.remove(id);
+  const dados: UpdateGrupoData = {};
+
+  if (data.nome !== undefined) {
+    dados.nome = validarTexto(data.nome, "nome", 100);
+    await validarNomeRepetido(dados.nome, idGrupo);
+  }
+
+  if (data.descricao !== undefined) {
+    dados.descricao = validarDescricao(data.descricao);
+  }
+
+  if (data.criadoPorId !== undefined) {
+    dados.criadoPorId = converterId(data.criadoPorId, "criadoPorId");
+  }
+
+  if (data.administradorId !== undefined) {
+    dados.administradorId = converterId(data.administradorId, "administradorId");
+  }
+
+  return grupoRepository.update(idGrupo, dados);
+}
+
+export async function remover(id: Identificador) {
+  const idGrupo = converterId(id, "Id do grupo");
+  await buscarPorId(idGrupo);
+  return grupoRepository.remove(idGrupo);
 }
